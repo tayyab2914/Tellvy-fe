@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Building2, Link2, Power } from 'lucide-react';
+import { Plus, Building2, Link2, Power, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const CATEGORIES = ['Medical', 'Dental', 'Legal', 'Restaurant', 'Salon', 'General'];
 
@@ -37,6 +38,16 @@ export default function AdminClients() {
       toast.error(err.response?.data?.detail || 'Failed to create client');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const deleteClient = async (clientId, businessName) => {
+    try {
+      await api.delete(`/admin/clients/${clientId}`);
+      toast.success(`Client '${businessName}' deleted`);
+      fetchClients();
+    } catch {
+      toast.error('Failed to delete client');
     }
   };
 
@@ -124,11 +135,12 @@ export default function AdminClients() {
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">City</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Status</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Kill Switch</TableHead>
+                <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Delete</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {clients.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="text-center py-8 text-sm text-zinc-500">No clients yet</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center py-8 text-sm text-zinc-500">No clients yet</TableCell></TableRow>
               ) : clients.map(c => (
                 <TableRow key={c.id} className="border-zinc-100" data-testid={`client-row-${c.id}`}>
                   <TableCell>
@@ -157,6 +169,32 @@ export default function AdminClients() {
                     >
                       <Power className="w-4 h-4" strokeWidth={1.5} />
                     </Button>
+                  </TableCell>
+                  <TableCell>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm" className="rounded-sm text-zinc-400 hover:text-red-600" data-testid={`delete-client-${c.id}`}>
+                          <Trash2 className="w-4 h-4" strokeWidth={1.5} />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="rounded-sm">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle className="font-heading font-medium tracking-tight">Delete Client</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete <span className="font-medium text-[#09090B]">{c.business_name}</span>? This will permanently remove the client, their account, and all team members. This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="rounded-sm">Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            className="rounded-sm bg-red-600 hover:bg-red-700 text-white"
+                            onClick={() => deleteClient(c.id, c.business_name)}
+                          >
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </TableCell>
                 </TableRow>
               ))}
