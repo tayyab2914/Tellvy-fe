@@ -17,17 +17,22 @@ const CATEGORIES = ['Medical', 'Dental', 'Legal', 'Restaurant', 'Salon', 'Genera
 
 export default function AdminClients() {
   const [clients, setClients] = useState([]);
+  const [regions, setRegions] = useState([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editingClient, setEditingClient] = useState(null);
-  const [form, setForm] = useState({ business_name: '', email: '', password: '', contact_name: '', category: 'General', city: '', redirect_url: '' });
-  const [editForm, setEditForm] = useState({ business_name: '', category: 'General', city: '', redirect_url: '' });
+  const [form, setForm] = useState({ business_name: '', email: '', password: '', contact_name: '', category: 'General', city: '', region: '', redirect_url: '' });
+  const [editForm, setEditForm] = useState({ business_name: '', category: 'General', city: '', region: '', redirect_url: '' });
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState(false);
 
   const fetchClients = () => api.get('/admin/clients').then(r => setClients(r.data)).catch(() => {});
+  const fetchRegions = () => api.get('/admin/regions').then(r => setRegions(r.data)).catch(() => {});
 
-  useEffect(() => { fetchClients(); }, []);
+  useEffect(() => { 
+    fetchClients();
+    fetchRegions();
+  }, []);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -36,7 +41,7 @@ export default function AdminClients() {
       await api.post('/admin/clients', form);
       toast.success('Client created successfully');
       setOpen(false);
-      setForm({ business_name: '', email: '', password: '', contact_name: '', category: 'General', city: '', redirect_url: '' });
+      setForm({ business_name: '', email: '', password: '', contact_name: '', category: 'General', city: '', region: '', redirect_url: '' });
       fetchClients();
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Failed to create client');
@@ -71,6 +76,7 @@ export default function AdminClients() {
       business_name: client.business_name,
       category: client.category,
       city: client.city || '',
+      region: client.region || '',
       redirect_url: client.redirect_url || '',
     });
     setEditOpen(true);
@@ -145,6 +151,17 @@ export default function AdminClients() {
                 </div>
               </div>
               <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Region</Label>
+                <Select value={form.region} onValueChange={v => setForm({...form, region: v})}>
+                  <SelectTrigger className="rounded-sm" data-testid="client-region-select">
+                    <SelectValue placeholder="Select region..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map(r => <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Redirect URL</Label>
                 <Input value={form.redirect_url} onChange={e => setForm({...form, redirect_url: e.target.value})} placeholder="https://maps.google.com/..." className="rounded-sm" data-testid="client-redirect-url-input" />
               </div>
@@ -165,6 +182,7 @@ export default function AdminClients() {
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Standee ID</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Category</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">City</TableHead>
+                <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Region</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Status</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Kill Switch</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Actions</TableHead>
@@ -172,7 +190,7 @@ export default function AdminClients() {
             </TableHeader>
             <TableBody>
               {clients.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="text-center py-8 text-sm text-zinc-500">No clients yet</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="text-center py-8 text-sm text-zinc-500">No clients yet</TableCell></TableRow>
               ) : clients.map(c => (
                 <TableRow key={c.id} className="border-zinc-100" data-testid={`client-row-${c.id}`}>
                   <TableCell>
@@ -186,6 +204,7 @@ export default function AdminClients() {
                   </TableCell>
                   <TableCell><span className="text-sm text-zinc-600">{c.category}</span></TableCell>
                   <TableCell><span className="text-sm text-zinc-600">{c.city || '-'}</span></TableCell>
+                  <TableCell><span className="text-sm text-zinc-600">{c.region || '-'}</span></TableCell>
                   <TableCell>
                     <Badge variant={c.is_active ? 'default' : 'destructive'} className={`rounded-sm text-xs ${c.is_active ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' : ''}`}>
                       {c.is_active ? 'Active' : 'Suspended'}
@@ -268,6 +287,17 @@ export default function AdminClients() {
                   <Label className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">City</Label>
                   <Input value={editForm.city} onChange={e => setEditForm({...editForm, city: e.target.value})} className="rounded-sm" data-testid="edit-client-city-input" />
                 </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Region</Label>
+                <Select value={editForm.region} onValueChange={v => setEditForm({...editForm, region: v})}>
+                  <SelectTrigger className="rounded-sm" data-testid="edit-client-region-select">
+                    <SelectValue placeholder="Select region..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {regions.map(r => <SelectItem key={r.name} value={r.name}>{r.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Redirect URL</Label>
