@@ -31,7 +31,7 @@ const clientLinks = [
   { to: '/client/reviews', icon: ScrollText, label: 'Reviews' },
 ];
 
-export default function Sidebar({ role }) {
+export default function Sidebar({ role, onClose }) {
   const { logout, user } = useAuth();
   const navigate = useNavigate();
 
@@ -50,8 +50,15 @@ export default function Sidebar({ role }) {
     navigate('/login');
   };
 
+  const handleLinkClick = () => {
+    // Close sidebar on mobile after navigation
+    if (onClose && window.innerWidth < 768) {
+      onClose();
+    }
+  };
+
   return (
-    <aside className="w-60 min-h-screen bg-white border-r border-zinc-200 flex flex-col" data-testid="sidebar">
+    <aside className="w-60 min-h-screen bg-white border-r border-zinc-200 flex flex-col sm:w-56 max-w-xs" data-testid="sidebar">
       <div className="p-5 border-b border-zinc-200">
         <div className="flex items-center gap-2.5">
           <img src="https://static.prod-images.emergentagent.com/jobs/d2ed1487-14a4-4fc1-8e2b-3d8f6aaf654d/images/a3e0b2130b485bc9bbe242cae0bab2b7c522b549d1955c31a2b1627d78900940.png" alt="Tellvy" className="w-7 h-7" />
@@ -59,17 +66,18 @@ export default function Sidebar({ role }) {
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-0.5">
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {links.map(({ to, icon: Icon, label, end }) => (
           <NavLink
             key={to} to={to} end={end}
+            onClick={handleLinkClick}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-sm text-sm transition-colors ${isActive ? 'bg-[#002FA7] text-white' : 'text-zinc-600 hover:bg-zinc-100 hover:text-[#09090B]'}`
             }
             data-testid={`sidebar-link-${label.toLowerCase().replace(/\s/g, '-')}`}
           >
-            <Icon className="w-4 h-4" strokeWidth={1.5} />
-            {label}
+            <Icon className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
+            <span className="truncate">{label}</span>
           </NavLink>
         ))}
       </nav>
@@ -80,8 +88,8 @@ export default function Sidebar({ role }) {
           <p className="text-xs text-zinc-400 truncate">{roleLabel}{user?.region ? ` \u00b7 ${user.region}` : ''}</p>
         </div>
         <button onClick={handleLogout} className="flex items-center gap-3 w-full px-3 py-2.5 rounded-sm text-sm text-zinc-600 hover:bg-zinc-100 hover:text-[#09090B] transition-colors" data-testid="sidebar-logout-button">
-          <LogOut className="w-4 h-4" strokeWidth={1.5} />
-          Sign Out
+          <LogOut className="w-4 h-4 flex-shrink-0" strokeWidth={1.5} />
+          <span className="truncate">Sign Out</span>
         </button>
       </div>
     </aside>

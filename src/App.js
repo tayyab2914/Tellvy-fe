@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import Sidebar from "@/components/Sidebar";
+import { Menu, X } from "lucide-react";
 
 // Pages
 import LoginPage from "@/pages/LoginPage";
@@ -50,11 +51,50 @@ function ProtectedRoute({ allowedRoles }) {
 }
 
 function DashboardLayout({ role }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  const closeSidebar = () => setSidebarOpen(false);
+
   return (
     <div className="flex min-h-screen bg-[#FAFAFA]">
-      <Sidebar role={role} />
-      <main className="flex-1 overflow-auto">
-        <Outlet />
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 md:hidden"
+          onClick={closeSidebar}
+        />
+      )}
+
+      {/* Sidebar - hidden on mobile by default */}
+      <div className={`fixed md:static inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out ${
+        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+      } md:translate-x-0`}>
+        <Sidebar role={role} onClose={closeSidebar} />
+      </div>
+
+      {/* Main content */}
+      <main className="flex-1 flex flex-col overflow-auto w-full">
+        {/* Mobile header with hamburger */}
+        <div className="md:hidden sticky top-0 z-20 flex items-center bg-white border-b border-zinc-200 px-4 py-3">
+          <button
+            onClick={toggleSidebar}
+            className="p-2 hover:bg-zinc-100 rounded-lg transition-colors"
+            aria-label="Toggle sidebar"
+          >
+            {sidebarOpen ? (
+              <X className="w-5 h-5 text-zinc-600" />
+            ) : (
+              <Menu className="w-5 h-5 text-zinc-600" />
+            )}
+          </button>
+          <span className="ml-3 font-heading text-lg font-medium text-[#09090B]">Tellvy</span>
+        </div>
+
+        {/* Page content */}
+        <div className="flex-1">
+          <Outlet />
+        </div>
       </main>
     </div>
   );
