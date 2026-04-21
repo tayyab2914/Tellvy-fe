@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Building2, Link2, Power, Trash2 } from 'lucide-react';
+import { Plus, Building2, Link2, Power, Trash2, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -18,8 +18,12 @@ const CATEGORIES = ['Medical', 'Dental', 'Legal', 'Restaurant', 'Salon', 'Genera
 export default function AdminClients() {
   const [clients, setClients] = useState([]);
   const [open, setOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
   const [form, setForm] = useState({ business_name: '', email: '', password: '', contact_name: '', category: 'General', city: '', redirect_url: '' });
+  const [editForm, setEditForm] = useState({ business_name: '', category: 'General', city: '', redirect_url: '' });
   const [creating, setCreating] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   const fetchClients = () => api.get('/admin/clients').then(r => setClients(r.data)).catch(() => {});
 
@@ -58,6 +62,34 @@ export default function AdminClients() {
       fetchClients();
     } catch {
       toast.error('Failed to toggle status');
+    }
+  };
+
+  const openEditDialog = (client) => {
+    setEditingClient(client);
+    setEditForm({
+      business_name: client.business_name,
+      category: client.category,
+      city: client.city || '',
+      redirect_url: client.redirect_url || '',
+    });
+    setEditOpen(true);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    if (!editingClient) return;
+    setUpdating(true);
+    try {
+      await api.put(`/admin/clients/${editingClient.id}`, editForm);
+      toast.success('Client updated successfully');
+      setEditOpen(false);
+      setEditingClient(null);
+      fetchClients();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update client');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -135,7 +167,7 @@ export default function AdminClients() {
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">City</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Status</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Kill Switch</TableHead>
-                <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Delete</TableHead>
+                <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -170,7 +202,16 @@ export default function AdminClients() {
                       <Power className="w-4 h-4" strokeWidth={1.5} />
                     </Button>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => openEditDialog(c)}
+                      className="rounded-sm text-zinc-400 hover:text-blue-600"
+                      data-testid={`edit-client-${c.id}`}
+                    >
+                      <Edit2 className="w-4 h-4" strokeWidth={1.5} />
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="sm" className="rounded-sm text-zinc-400 hover:text-red-600" data-testid={`delete-client-${c.id}`}>
@@ -202,6 +243,48 @@ export default function AdminClients() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Edit Client Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="rounded-sm max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl font-medium tracking-tight">Edit Client</DialogTitle>
+          </DialogHeader>
+          {editingClient && (
+            <form onSubmit={handleUpdate} className="space-y-4 mt-2">
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Business Name</Label>
+                <Input value={editForm.business_name} onChange={e => setEditForm({...editForm, business_name: e.target.value})} required className="rounded-sm" data-testid="edit-client-business-name-input" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Category</Label>
+                  <Select value={editForm.category} onValueChange={v => setEditForm({...editForm, category: v})}>
+                    <SelectTrigger className="rounded-sm" data-testid="edit-client-category-select"><SelectValue /></SelectTrigger>
+                    <SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">City</Label>
+                  <Input value={editForm.city} onChange={e => setEditForm({...editForm, city: e.target.value})} className="rounded-sm" data-testid="edit-client-city-input" />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Redirect URL</Label>
+                <Input value={editForm.redirect_url} onChange={e => setEditForm({...editForm, redirect_url: e.target.value})} placeholder="https://maps.google.com/..." className="rounded-sm" data-testid="edit-client-redirect-url-input" />
+              </div>
+              <div className="flex gap-2 justify-end pt-4">
+                <Button type="button" variant="outline" onClick={() => setEditOpen(false)} className="rounded-sm">
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updating} className="rounded-sm bg-[#002FA7] hover:bg-[#001f7a] text-white" data-testid="submit-edit-client">
+                  {updating ? 'Updating...' : 'Update Client'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
