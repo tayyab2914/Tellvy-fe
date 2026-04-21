@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, MessageSquare, Loader2, Copy } from 'lucide-react';
+import { Star, MessageSquare, Loader2, Copy, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ClientReviews() {
@@ -12,10 +12,24 @@ export default function ClientReviews() {
   const [responding, setResponding] = useState(null);
   const [responseDraft, setResponseDraft] = useState('');
   const [generating, setGenerating] = useState(false);
+  const [importing, setImporting] = useState(false);
 
-  useEffect(() => {
-    api.get('/client/reviews').then(r => setReviews(r.data)).catch(() => {});
-  }, []);
+  const fetchReviews = () => api.get('/client/reviews').then(r => setReviews(r.data)).catch(() => {});
+
+  useEffect(() => { fetchReviews(); }, []);
+
+  const handleImportReviews = async () => {
+    setImporting(true);
+    try {
+      await api.post('/client/import-reviews');
+      toast.success('Review import started — check back in a moment');
+      setTimeout(fetchReviews, 5000);
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Import failed');
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const handleResponseAssist = async (review) => {
     setResponding(review.id);
@@ -37,9 +51,23 @@ export default function ClientReviews() {
 
   return (
     <div className="p-6 space-y-6" data-testid="client-reviews-page">
-      <div>
-        <h1 className="font-heading text-2xl sm:text-3xl tracking-tight font-medium text-[#09090B]">Reviews</h1>
-        <p className="text-sm text-zinc-500 mt-1">Unified review feed with AI response assistant</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="font-heading text-2xl sm:text-3xl tracking-tight font-medium text-[#09090B]">Reviews</h1>
+          <p className="text-sm text-zinc-500 mt-1">Unified review feed with AI response assistant</p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleImportReviews}
+          disabled={importing}
+          className="rounded-sm"
+          data-testid="import-reviews-button"
+        >
+          {importing
+            ? <><Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Importing...</>
+            : <><RefreshCw className="w-3.5 h-3.5 mr-1.5" strokeWidth={1.5} /> Refresh Reviews</>}
+        </Button>
       </div>
 
       <div className="space-y-4">
