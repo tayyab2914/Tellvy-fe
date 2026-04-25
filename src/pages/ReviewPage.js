@@ -8,10 +8,13 @@ import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
+const RATING_LABELS = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+
 export default function ReviewPage() {
   const { clientId } = useParams();
   const [searchParams] = useSearchParams();
   const memberName = searchParams.get('member') || '';
+  const memberId = searchParams.get('member_id') || '';
   const category = searchParams.get('category') || 'General';
   const redirectUrl = searchParams.get('redirect') || '';
 
@@ -20,6 +23,9 @@ export default function ReviewPage() {
   const [draft, setDraft] = useState('');
   const [generating, setGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [alertSent, setAlertSent] = useState(false);
 
   useEffect(() => {
     axios.get(`${API}/ai/tags/${category}`)
@@ -58,7 +64,18 @@ export default function ReviewPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleGoToReview = () => {
+  const handleGoToReview = async () => {
+    if (rating > 0 && rating < 4 && !alertSent) {
+      try {
+        await axios.post(`${API}/portal/low-rating-alert`, {
+          client_id: clientId,
+          member_id: memberId,
+          member_name: memberName,
+          rating,
+        });
+        setAlertSent(true);
+      } catch {}
+    }
     if (redirectUrl) {
       window.open(redirectUrl, '_blank');
     }
@@ -93,6 +110,33 @@ export default function ReviewPage() {
           <p className="text-sm text-zinc-500 mb-1">You selected</p>
           <h1 className="font-heading text-2xl tracking-tight font-medium text-[#09090B]">{memberName}</h1>
           <p className="text-sm text-zinc-400 mt-1">Help us leave a review!</p>
+        </div>
+
+        {/* Star Rating */}
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] font-bold text-zinc-400 mb-3">Rate your experience</p>
+          <div className="flex items-center gap-1" data-testid="star-rating">
+            {[1, 2, 3, 4, 5].map(star => (
+              <button
+                key={star}
+                onClick={() => setRating(star)}
+                onMouseEnter={() => setHoveredRating(star)}
+                onMouseLeave={() => setHoveredRating(0)}
+                className="text-4xl leading-none transition-transform hover:scale-110 focus:outline-none"
+                data-testid={`star-${star}`}
+                aria-label={`${star} star${star > 1 ? 's' : ''}`}
+              >
+                <span className={star <= (hoveredRating || rating) ? 'text-amber-400' : 'text-zinc-300'}>
+                  ★
+                </span>
+              </button>
+            ))}
+          </div>
+          {(hoveredRating || rating) > 0 && (
+            <p className="text-sm text-zinc-500 mt-2">
+              {RATING_LABELS[hoveredRating || rating]}
+            </p>
+          )}
         </div>
 
         {/* Tag Selection */}
