@@ -37,6 +37,7 @@ export default function AgentClientDetail() {
     } catch {}
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchData(); }, [clientId]);
 
   const handleSaveRedirect = async () => {
