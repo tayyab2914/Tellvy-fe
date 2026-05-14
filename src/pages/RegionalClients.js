@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Building2, UserCog, Trophy } from 'lucide-react';
+import { Building2, UserCog, Trophy, ExternalLink } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { fileUrl } from '@/lib/api';
 
@@ -45,7 +45,7 @@ export default function RegionalClients() {
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Agent</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Standee</TableHead>
                 <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400">Status</TableHead>
-                <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400 text-right">Leaderboard</TableHead>
+                <TableHead className="text-xs uppercase tracking-[0.15em] font-bold text-zinc-400 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -54,8 +54,20 @@ export default function RegionalClients() {
               ) : clients.map(c => (
                 <TableRow key={c.id} className="border-zinc-100" data-testid={`regional-client-row-${c.id}`}>
                   <TableCell>
-                    <p className="text-sm font-medium text-[#09090B]">{c.business_name}</p>
-                    <p className="text-xs text-zinc-400">{c.email}</p>
+                    <a
+                      href={`/portal/${c.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block group cursor-pointer"
+                      data-testid={`view-portal-${c.id}`}
+                      title="Open client portal in new tab"
+                    >
+                      <p className="text-sm font-medium text-[#09090B] group-hover:text-[#002FA7] group-hover:underline transition-colors inline-flex items-center gap-1.5">
+                        {c.business_name}
+                        <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+                      </p>
+                      <p className="text-xs text-zinc-400">{c.email}</p>
+                    </a>
                   </TableCell>
                   <TableCell className="text-sm text-zinc-600">{c.category}</TableCell>
                   <TableCell className="text-sm text-zinc-600">{c.city || '-'}</TableCell>
@@ -72,9 +84,22 @@ export default function RegionalClients() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="sm" onClick={() => viewLeaderboard(c)} className="rounded-sm text-[#002FA7] hover:bg-[#002FA7]/5" data-testid={`view-leaderboard-${c.id}`}>
-                      <Trophy className="w-4 h-4" strokeWidth={1.5} />
-                    </Button>
+                    <div className="flex gap-1 justify-end">
+                      <Button
+                        asChild
+                        variant="ghost"
+                        size="sm"
+                        className="rounded-sm text-zinc-400 hover:text-[#002FA7] hover:bg-[#002FA7]/5"
+                        data-testid={`open-portal-${c.id}`}
+                      >
+                        <a href={`/portal/${c.id}`} target="_blank" rel="noopener noreferrer" title="Open client portal">
+                          <ExternalLink className="w-4 h-4" strokeWidth={1.5} />
+                        </a>
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={() => viewLeaderboard(c)} className="rounded-sm text-[#002FA7] hover:bg-[#002FA7]/5" data-testid={`view-leaderboard-${c.id}`} title="View leaderboard">
+                        <Trophy className="w-4 h-4" strokeWidth={1.5} />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}

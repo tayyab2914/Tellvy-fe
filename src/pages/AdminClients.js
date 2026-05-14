@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Building2, Link2, Power, Trash2, Edit2 } from 'lucide-react';
+import { Plus, Building2, Link2, Power, Trash2, Edit2, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
@@ -194,10 +194,20 @@ export default function AdminClients() {
               ) : clients.map(c => (
                 <TableRow key={c.id} className="border-zinc-100" data-testid={`client-row-${c.id}`}>
                   <TableCell>
-                    <div>
-                      <p className="text-sm font-medium text-[#09090B]">{c.business_name}</p>
+                    <a
+                      href={`/portal/${c.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block group cursor-pointer"
+                      data-testid={`view-portal-${c.id}`}
+                      title="Open client portal in new tab"
+                    >
+                      <p className="text-sm font-medium text-[#09090B] group-hover:text-[#002FA7] group-hover:underline transition-colors inline-flex items-center gap-1.5">
+                        {c.business_name}
+                        <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" strokeWidth={1.5} />
+                      </p>
                       <p className="text-xs text-zinc-400">{c.email}</p>
-                    </div>
+                    </a>
                   </TableCell>
                   <TableCell>
                     <code className="text-xs bg-zinc-100 px-2 py-1 rounded-sm font-mono">{c.standee_id}</code>
@@ -222,6 +232,17 @@ export default function AdminClients() {
                     </Button>
                   </TableCell>
                   <TableCell className="flex gap-2">
+                    <Button
+                      asChild
+                      variant="ghost"
+                      size="sm"
+                      className="rounded-sm text-zinc-400 hover:text-[#002FA7]"
+                      data-testid={`open-portal-${c.id}`}
+                    >
+                      <a href={`/portal/${c.id}`} target="_blank" rel="noopener noreferrer" title="Open client portal">
+                        <ExternalLink className="w-4 h-4" strokeWidth={1.5} />
+                      </a>
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"

@@ -85,10 +85,20 @@ export default function AgentClientDetail() {
         <Button variant="ghost" size="sm" onClick={() => navigate('/agent')} className="rounded-sm" data-testid="back-to-clients">
           <ArrowLeft className="w-4 h-4" strokeWidth={1.5} />
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="font-heading text-2xl tracking-tight font-medium text-[#09090B]">{clientData.business_name}</h1>
           <p className="text-sm text-zinc-500">{clientData.category} &middot; {clientData.city || 'No city'} &middot; Standee: <code className="bg-zinc-100 px-1.5 py-0.5 rounded-sm font-mono text-xs">{clientData.standee_id}</code></p>
         </div>
+        <Button
+          asChild
+          variant="outline"
+          className="rounded-sm border-[#002FA7]/20 text-[#002FA7] hover:bg-[#002FA7]/5"
+          data-testid="open-client-portal"
+        >
+          <a href={`/portal/${clientId}`} target="_blank" rel="noopener noreferrer">
+            <ExternalLink className="w-4 h-4 mr-1.5" strokeWidth={1.5} /> View Portal
+          </a>
+        </Button>
       </div>
 
       {/* Redirect URL Editor */}

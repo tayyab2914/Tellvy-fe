@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Building2, Wand2, Users, Link2, Trophy } from 'lucide-react';
+import { Building2, Wand2, Users, Link2, Trophy, ExternalLink } from 'lucide-react';
 
 export default function AgentDashboard() {
   const [clients, setClients] = useState([]);
@@ -59,11 +59,20 @@ export default function AgentDashboard() {
                   </div>
                   <h3 className="font-heading text-lg font-medium text-[#09090B] group-hover:text-[#002FA7] transition-colors mb-1">{c.business_name}</h3>
                   <p className="text-sm text-zinc-500">{c.category} &middot; {c.city || 'No city'}</p>
-                  <div className="flex items-center gap-4 mt-3 pt-3 border-t border-zinc-100">
+                  <div className="flex items-center justify-between gap-4 mt-3 pt-3 border-t border-zinc-100">
                     <div className="flex items-center gap-1.5 text-xs text-zinc-400">
                       <Link2 className="w-3 h-3" strokeWidth={1.5} />
                       <code className="font-mono">{c.standee_id}</code>
                     </div>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`/portal/${c.id}`, '_blank', 'noopener,noreferrer'); }}
+                      className="inline-flex items-center gap-1.5 text-xs text-[#002FA7] hover:underline"
+                      data-testid={`open-portal-${c.id}`}
+                      title="Open client portal in new tab"
+                    >
+                      <ExternalLink className="w-3 h-3" strokeWidth={1.5} /> View Portal
+                    </button>
                   </div>
                 </CardContent>
               </Card>
