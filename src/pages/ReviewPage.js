@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Sparkles, Copy, Check, ExternalLink, Loader2, ArrowLeft } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { Sparkles, ExternalLink, Loader2, ArrowLeft, MessageSquare, Send, CheckCircle2, Info } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
@@ -22,10 +22,15 @@ export default function ReviewPage() {
   const [selectedTags, setSelectedTags] = useState([]);
   const [draft, setDraft] = useState('');
   const [generating, setGenerating] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState(5);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [alertSent, setAlertSent] = useState(false);
+  const [feedbackMessage, setFeedbackMessage] = useState('');
+  const [feedbackSending, setFeedbackSending] = useState(false);
+  const [feedbackSent, setFeedbackSent] = useState(false);
+
+  // 1-3 stars is treated as a low rating: constructive tone + private feedback focus.
+  const isLowRating = rating > 0 && rating < 4;
 
   useEffect(() => {
     axios.get(`${API}/ai/tags/${category}`)
@@ -33,13 +38,19 @@ export default function ReviewPage() {
       .catch(() => setTags(['Professional', 'Efficient', 'Friendly', 'Helpful', 'Excellent']));
   }, [category]);
 
+  // Reset the generated draft if the rating crosses the low/high boundary,
+  // so a positive draft is never shown for a low rating (and vice versa).
+  useEffect(() => {
+    setDraft('');
+  }, [isLowRating]);
+
   const toggleTag = (tag) => {
     setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
   const handleMagicWrite = async () => {
     if (selectedTags.length === 0) {
-      toast.error('Select at least one quality tag');
+      toast.error(isLowRating ? 'Select at least one area to improve' : 'Select at least one quality tag');
       return;
     }
     setGenerating(true);
@@ -47,7 +58,8 @@ export default function ReviewPage() {
       const { data } = await axios.post(`${API}/ai/magic-write`, {
         member_name: memberName,
         tags: selectedTags,
-        category: category
+        category: category,
+        rating: rating,
       });
       setDraft(data.review_draft);
     } catch {
@@ -57,27 +69,56 @@ export default function ReviewPage() {
     }
   };
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(draft);
-    setCopied(true);
-    toast.success('Review copied to clipboard!');
-    setTimeout(() => setCopied(false), 2000);
+  const handleSendFeedback = async () => {
+    if (!feedbackMessage.trim()) {
+      toast.error('Please write your feedback first');
+      return;
+    }
+    setFeedbackSending(true);
+    try {
+      await axios.post(`${API}/portal/private-feedback`, {
+        client_id: clientId,
+        member_id: memberId,
+        member_name: memberName,
+        rating,
+        message: feedbackMessage.trim(),
+      });
+      setFeedbackSent(true);
+      toast.success('Your feedback has been sent to management');
+    } catch {
+      toast.error('Failed to send feedback. Please try again.');
+    } finally {
+      setFeedbackSending(false);
+    }
   };
 
-  const handleGoToReview = async () => {
-    if (rating > 0 && rating < 4 && !alertSent) {
-      try {
-        await axios.post(`${API}/portal/low-rating-alert`, {
-          client_id: clientId,
-          member_id: memberId,
-          member_name: memberName,
-          rating,
-        });
-        setAlertSent(true);
-      } catch {}
+  // Combined action: copy the draft to the clipboard in the background AND open the
+  // review link in one tap. Everything before window.open is synchronous and
+  // non-blocking so the redirect fires inside the original tap gesture — this is
+  // what prevents the "needs multiple taps" lag on iOS/Android browsers.
+  const handleLeaveReview = () => {
+    // Copy to clipboard — fire and forget, never await (awaiting would break the
+    // user-gesture context and cause the popup/redirect to be blocked on mobile).
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(draft).catch(() => {});
+      }
+    } catch {}
+
+    // Notify management of a low rating — also fire and forget, no await.
+    if (isLowRating && !alertSent) {
+      setAlertSent(true);
+      axios.post(`${API}/portal/low-rating-alert`, {
+        client_id: clientId,
+        member_id: memberId,
+        member_name: memberName,
+        rating,
+      }).catch(() => {});
     }
+
+    // Redirect immediately, synchronously, within the tap gesture.
     if (redirectUrl) {
-      window.open(redirectUrl, '_blank');
+      window.open(redirectUrl, '_blank', 'noopener');
     }
   };
 
@@ -139,70 +180,135 @@ export default function ReviewPage() {
           )}
         </div>
 
-        {/* Tag Selection */}
-        <div>
-          <p className="text-xs uppercase tracking-[0.2em] font-bold text-zinc-400 mb-3">How was your experience?</p>
-          <div className="flex flex-wrap gap-2">
-            {tags.map(tag => (
-              <button
-                key={tag}
-                onClick={() => toggleTag(tag)}
-                className={`px-4 py-2 text-sm rounded-sm border transition-all duration-150 ${
-                  selectedTags.includes(tag)
-                    ? 'bg-[#002FA7] text-white border-[#002FA7]'
-                    : 'bg-white text-zinc-600 border-zinc-200 hover:border-[#002FA7]/50'
-                }`}
-                data-testid={`tag-${tag.toLowerCase()}`}
-              >
-                {tag}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Magic Write Button */}
-        <Button
-          onClick={handleMagicWrite}
-          disabled={generating || selectedTags.length === 0}
-          className="w-full h-12 rounded-sm bg-[#002FA7] hover:bg-[#001f7a] text-white text-sm font-medium border-2 border-[#002FA7] shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] disabled:opacity-50"
-          data-testid="magic-write-button"
-        >
-          {generating ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Writing...</>
-          ) : (
-            <><Sparkles className="w-4 h-4 mr-2" strokeWidth={1.5} /> Magic Write</>
-          )}
-        </Button>
-
-        {/* Generated Draft */}
-        {draft && (
-          <div className="space-y-4" data-testid="review-draft-area">
-            <div className="p-5 bg-white border border-zinc-200 rounded-sm">
-              <p className="text-xs uppercase tracking-[0.2em] font-bold text-zinc-400 mb-3">Your Review Draft</p>
-              <p className="text-base text-[#09090B] leading-relaxed">{draft}</p>
-            </div>
-
-            <div className="flex gap-3">
-              <Button
-                onClick={handleCopy}
-                className="flex-1 rounded-sm bg-[#09090B] hover:bg-zinc-800 text-white"
-                data-testid="copy-review-button"
-              >
-                {copied ? <><Check className="w-4 h-4 mr-2" strokeWidth={1.5} /> Copied!</> : <><Copy className="w-4 h-4 mr-2" strokeWidth={1.5} /> Copy to Clipboard</>}
-              </Button>
-              {redirectUrl && (
+        {/* Private Feedback — prominent for low (1-3 star) ratings */}
+        {isLowRating && (
+          <div
+            className="p-5 bg-white border-2 border-[#002FA7]/20 rounded-sm shadow-sm"
+            data-testid="private-feedback-section"
+          >
+            {feedbackSent ? (
+              <div className="text-center py-2">
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mx-auto mb-2" strokeWidth={1.5} />
+                <p className="text-base font-medium text-[#09090B]">Thank you for your feedback</p>
+                <p className="text-sm text-zinc-500 mt-1">Management has been notified and will look into it.</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare className="w-5 h-5 text-[#002FA7]" strokeWidth={1.5} />
+                  <h2 className="text-base font-medium text-[#09090B]">Send Private Feedback to Management</h2>
+                </div>
+                <p className="text-sm text-zinc-500 mb-4">
+                  Sorry your experience fell short. Tell management directly so they can make it right —
+                  this goes straight to them and stays private.
+                </p>
+                <Textarea
+                  value={feedbackMessage}
+                  onChange={(e) => setFeedbackMessage(e.target.value)}
+                  placeholder="What could we have done better?"
+                  rows={4}
+                  className="rounded-sm border-zinc-200 text-base resize-none"
+                  data-testid="private-feedback-textarea"
+                />
                 <Button
-                  onClick={handleGoToReview}
-                  variant="outline"
-                  className="rounded-sm border-[#002FA7]/20 text-[#002FA7] hover:bg-[#002FA7]/5"
-                  data-testid="go-to-review-button"
+                  onClick={handleSendFeedback}
+                  disabled={feedbackSending || !feedbackMessage.trim()}
+                  className="w-full h-12 mt-3 rounded-sm bg-[#002FA7] hover:bg-[#001f7a] text-white text-sm font-medium disabled:opacity-50"
+                  data-testid="send-feedback-button"
                 >
-                  <ExternalLink className="w-4 h-4 mr-2" strokeWidth={1.5} /> Leave Review
+                  {feedbackSending ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
+                  ) : (
+                    <><Send className="w-4 h-4 mr-2" strokeWidth={1.5} /> Send Private Feedback</>
+                  )}
                 </Button>
-              )}
-            </div>
+              </>
+            )}
           </div>
         )}
+
+        {/* Public review flow — secondary for low ratings, primary for high ratings */}
+        <div className={isLowRating ? 'pt-2 border-t border-zinc-200' : ''}>
+          {isLowRating && (
+            <p className="text-sm text-zinc-400 mb-6 mt-4">
+              You can still post a public review if you'd like.
+            </p>
+          )}
+
+          <div className="space-y-8">
+            {/* Tag Selection */}
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] font-bold text-zinc-400 mb-3">
+                {isLowRating ? 'Which areas need improvement?' : 'How was your experience?'}
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {tags.map(tag => (
+                  <button
+                    key={tag}
+                    onClick={() => toggleTag(tag)}
+                    className={`px-4 py-2 text-sm rounded-sm border transition-all duration-150 ${
+                      selectedTags.includes(tag)
+                        ? 'bg-[#002FA7] text-white border-[#002FA7]'
+                        : 'bg-white text-zinc-600 border-zinc-200 hover:border-[#002FA7]/50'
+                    }`}
+                    data-testid={`tag-${tag.toLowerCase()}`}
+                  >
+                    {tag}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Magic Write Button */}
+            <Button
+              onClick={handleMagicWrite}
+              disabled={generating || selectedTags.length === 0}
+              className="w-full h-12 rounded-sm bg-[#002FA7] hover:bg-[#001f7a] text-white text-sm font-medium border-2 border-[#002FA7] shadow-[inset_0_0_20px_rgba(255,255,255,0.1)] disabled:opacity-50"
+              data-testid="magic-write-button"
+            >
+              {generating ? (
+                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Writing...</>
+              ) : (
+                <><Sparkles className="w-4 h-4 mr-2" strokeWidth={1.5} /> Magic Write</>
+              )}
+            </Button>
+
+            {/* Generated Draft */}
+            {draft && (
+              <div className="space-y-4" data-testid="review-draft-area">
+                <div className="p-5 bg-white border border-zinc-200 rounded-sm">
+                  <p className="text-xs uppercase tracking-[0.2em] font-bold text-zinc-400 mb-3">Your Review Draft</p>
+                  <p className="text-base text-[#09090B] leading-relaxed">{draft}</p>
+                </div>
+
+                {redirectUrl && (
+                  <>
+                    {/* Instructional note above the single combined action button */}
+                    <div
+                      className="flex items-start gap-2 px-3 py-2.5 bg-[#002FA7]/5 rounded-sm"
+                      data-testid="copy-paste-hint"
+                    >
+                      <Info className="w-4 h-4 text-[#002FA7] mt-0.5 shrink-0" strokeWidth={1.5} />
+                      <p className="text-xs text-zinc-600 leading-relaxed">
+                        Your review is automatically copied! Just long-press and tap{' '}
+                        <span className="font-semibold">'Paste'</span> when Google Maps opens.
+                      </p>
+                    </div>
+
+                    {/* Single button: copies the draft AND opens the review link in one tap */}
+                    <Button
+                      onClick={handleLeaveReview}
+                      className="w-full h-12 rounded-sm bg-[#09090B] hover:bg-zinc-800 text-white text-sm font-medium"
+                      data-testid="leave-review-button"
+                    >
+                      <ExternalLink className="w-4 h-4 mr-2" strokeWidth={1.5} /> Leave Review
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
