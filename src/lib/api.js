@@ -16,4 +16,11 @@ export const api = {
   upload: (url, formData, config = {}) => axios.post(`${API}${url}`, formData, { ...config, headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data', ...config.headers }, withCredentials: true }),
 };
 
-export const fileUrl = (path) => `${API}/files/${path}`;
+// Staff photos uploaded to S3 are stored as full https URLs and can be used
+// as-is. Older photos stored as relative object-storage paths are served
+// through the backend /files proxy.
+export const fileUrl = (path) => {
+  if (!path) return '';
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${API}/files/${path}`;
+};

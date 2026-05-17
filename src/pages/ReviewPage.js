@@ -10,6 +10,10 @@ const API = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const RATING_LABELS = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
+// For low (1-3 star) ratings the tag buttons switch from positive qualities to
+// critical areas of improvement, so the customer flags what fell short instead.
+const CRITIQUE_TAGS = ['Rough', 'Unprofessional', 'Painful', 'Dirty', 'Slow'];
+
 export default function ReviewPage() {
   const { clientId } = useParams();
   const [searchParams] = useSearchParams();
@@ -38,14 +42,22 @@ export default function ReviewPage() {
       .catch(() => setTags(['Professional', 'Efficient', 'Friendly', 'Helpful', 'Excellent']));
   }, [category]);
 
-  // Reset the generated draft if the rating crosses the low/high boundary,
-  // so a positive draft is never shown for a low rating (and vice versa).
+  // Reset the generated draft AND the selected tag if the rating crosses the
+  // low/high boundary, so a positive draft/tag is never carried over to a low
+  // rating (and vice versa) — the tag sets differ between the two modes.
   useEffect(() => {
     setDraft('');
+    setSelectedTags([]);
   }, [isLowRating]);
 
+  // Low ratings show critical "areas to improve" tags; high ratings show the
+  // category's positive quality tags fetched from the backend.
+  const displayTags = isLowRating ? CRITIQUE_TAGS : tags;
+
+  // Single-select: clicking a new tag replaces the previous selection, and
+  // clicking the already-selected tag clears it.
   const toggleTag = (tag) => {
-    setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+    setSelectedTags(prev => (prev.includes(tag) ? [] : [tag]));
   };
 
   const handleMagicWrite = async () => {
@@ -92,13 +104,17 @@ export default function ReviewPage() {
     }
   };
 
-  // Combined action: copy the draft to the clipboard in the background AND open the
-  // review link in one tap. Everything before window.open is synchronous and
-  // non-blocking so the redirect fires inside the original tap gesture — this is
-  // what prevents the "needs multiple taps" lag on iOS/Android browsers.
+  // The "Leave Review" control is a real <a> element (see render below) so the
+  // browser performs the navigation natively — no programmatic window.open.
+  // This is what eliminates the mobile "needs multiple taps / freeze" bug:
+  // window.open() inside a JS handler is treated as a popup on iOS/Android and
+  // is throttled or blocked, whereas a genuine anchor tap always navigates on
+  // the first tap. This handler only runs the side effects (copy + alert) and
+  // does NOT block or await anything, so the native navigation is never delayed.
   const handleLeaveReview = () => {
     // Copy to clipboard — fire and forget, never await (awaiting would break the
-    // user-gesture context and cause the popup/redirect to be blocked on mobile).
+    // user-gesture context). writeText() must be called synchronously inside the
+    // tap handler for the clipboard permission to be granted on mobile.
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(draft).catch(() => {});
@@ -115,11 +131,7 @@ export default function ReviewPage() {
         rating,
       }).catch(() => {});
     }
-
-    // Redirect immediately, synchronously, within the tap gesture.
-    if (redirectUrl) {
-      window.open(redirectUrl, '_blank', 'noopener');
-    }
+    // No navigation here — the <a href> handles it natively within the gesture.
   };
 
   return (
@@ -242,7 +254,7 @@ export default function ReviewPage() {
                 {isLowRating ? 'Which areas need improvement?' : 'How was your experience?'}
               </p>
               <div className="flex flex-wrap gap-2">
-                {tags.map(tag => (
+                {displayTags.map(tag => (
                   <button
                     key={tag}
                     onClick={() => toggleTag(tag)}
@@ -295,13 +307,23 @@ export default function ReviewPage() {
                       </p>
                     </div>
 
-                    {/* Single button: copies the draft AND opens the review link in one tap */}
+                    {/* Single control: a native <a> tap copies the draft AND opens
+                        the review link in one tap with no lag. Rendered as an anchor
+                        (not a JS window.open) so iOS/Android navigate on the first
+                        tap instead of treating it as a throttled popup. */}
                     <Button
-                      onClick={handleLeaveReview}
+                      asChild
                       className="w-full h-12 rounded-sm bg-[#09090B] hover:bg-zinc-800 text-white text-sm font-medium"
-                      data-testid="leave-review-button"
                     >
-                      <ExternalLink className="w-4 h-4 mr-2" strokeWidth={1.5} /> Leave Review
+                      <a
+                        href={redirectUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={handleLeaveReview}
+                        data-testid="leave-review-button"
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" strokeWidth={1.5} /> Leave Review
+                      </a>
                     </Button>
                   </>
                 )}

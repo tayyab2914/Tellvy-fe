@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '@/lib/api';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +44,18 @@ export default function AgentDashboard() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {clients.map(c => (
-            <Link key={c.id} to={`/agent/clients/${c.id}`} className="block group" data-testid={`agent-client-card-${c.id}`}>
+            // A plain div (not a <Link>/<a>) is used as the row so the inner
+            // "View Portal" button is NOT nested inside an anchor — that invalid
+            // nesting is what made the card untappable on mobile browsers.
+            <div
+              key={c.id}
+              role="button"
+              tabIndex={0}
+              onClick={() => navigate(`/agent/clients/${c.id}`)}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); navigate(`/agent/clients/${c.id}`); } }}
+              className="block group cursor-pointer"
+              data-testid={`agent-client-card-${c.id}`}
+            >
               <Card className="rounded-sm border-zinc-200 shadow-none hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200 h-full">
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-3">
@@ -64,19 +75,21 @@ export default function AgentDashboard() {
                       <Link2 className="w-3 h-3" strokeWidth={1.5} />
                       <code className="font-mono">{c.standee_id}</code>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); window.open(`/portal/${c.id}`, '_blank', 'noopener,noreferrer'); }}
+                    <a
+                      href={`/portal/${c.id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
                       className="inline-flex items-center gap-1.5 text-xs text-[#002FA7] hover:underline"
                       data-testid={`open-portal-${c.id}`}
                       title="Open client portal in new tab"
                     >
                       <ExternalLink className="w-3 h-3" strokeWidth={1.5} /> View Portal
-                    </button>
+                    </a>
                   </div>
                 </CardContent>
               </Card>
-            </Link>
+            </div>
           ))}
         </div>
       )}

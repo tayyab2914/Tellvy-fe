@@ -192,12 +192,21 @@ export default function AdminClients() {
               {clients.length === 0 ? (
                 <TableRow><TableCell colSpan={8} className="text-center py-8 text-sm text-zinc-500">No clients yet</TableCell></TableRow>
               ) : clients.map(c => (
-                <TableRow key={c.id} className="border-zinc-100" data-testid={`client-row-${c.id}`}>
+                // The whole row is tappable and opens the client's profile /
+                // redirect settings — this is the primary action on mobile,
+                // where the small icon buttons are hard to hit accurately.
+                <TableRow
+                  key={c.id}
+                  className="border-zinc-100 cursor-pointer hover:bg-zinc-50"
+                  data-testid={`client-row-${c.id}`}
+                  onClick={() => openEditDialog(c)}
+                >
                   <TableCell>
                     <a
                       href={`/portal/${c.id}`}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
                       className="block group cursor-pointer"
                       data-testid={`view-portal-${c.id}`}
                       title="Open client portal in new tab"
@@ -224,7 +233,7 @@ export default function AdminClients() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toggleKillSwitch(c.id)}
+                      onClick={(e) => { e.stopPropagation(); toggleKillSwitch(c.id); }}
                       className={`rounded-sm ${c.is_active ? 'text-zinc-500 hover:text-red-600' : 'text-red-600 hover:text-emerald-600'}`}
                       data-testid={`kill-switch-${c.id}`}
                     >
@@ -239,14 +248,14 @@ export default function AdminClients() {
                       className="rounded-sm text-zinc-400 hover:text-[#002FA7]"
                       data-testid={`open-portal-${c.id}`}
                     >
-                      <a href={`/portal/${c.id}`} target="_blank" rel="noopener noreferrer" title="Open client portal">
+                      <a href={`/portal/${c.id}`} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()} title="Open client portal">
                         <ExternalLink className="w-4 h-4" strokeWidth={1.5} />
                       </a>
                     </Button>
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => openEditDialog(c)}
+                      onClick={(e) => { e.stopPropagation(); openEditDialog(c); }}
                       className="rounded-sm text-zinc-400 hover:text-blue-600"
                       data-testid={`edit-client-${c.id}`}
                     >
@@ -254,7 +263,7 @@ export default function AdminClients() {
                     </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="rounded-sm text-zinc-400 hover:text-red-600" data-testid={`delete-client-${c.id}`}>
+                        <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()} className="rounded-sm text-zinc-400 hover:text-red-600" data-testid={`delete-client-${c.id}`}>
                           <Trash2 className="w-4 h-4" strokeWidth={1.5} />
                         </Button>
                       </AlertDialogTrigger>

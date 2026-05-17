@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Upload, Users, Loader2 } from 'lucide-react';
+import { Plus, Upload, Users, Loader2, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ClientTeam() {
@@ -15,10 +15,29 @@ export default function ClientTeam() {
   const [form, setForm] = useState({ name: '', role_title: '' });
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [changingId, setChangingId] = useState(null);
   const fileRef = useRef();
 
   const fetchMembers = () => api.get('/client/team').then(r => setMembers(r.data)).catch(() => {});
   useEffect(() => { fetchMembers(); }, []);
+
+  // Replace an existing member's photo (e.g. a wrong image was uploaded).
+  const handleChangePhoto = async (memberId, photoFile, e) => {
+    if (!photoFile) return;
+    setChangingId(memberId);
+    try {
+      const formData = new FormData();
+      formData.append('file', photoFile);
+      await api.upload(`/client/team/${memberId}/photo`, formData);
+      toast.success('Photo updated');
+      fetchMembers();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update photo');
+    } finally {
+      setChangingId(null);
+      if (e?.target) e.target.value = '';
+    }
+  };
 
   const handleUpload = async (e) => {
     e.preventDefault();
@@ -95,7 +114,12 @@ export default function ClientTeam() {
               ) : members.map(m => (
                 <TableRow key={m.id} className="border-zinc-100" data-testid={`team-member-row-${m.id}`}>
                   <TableCell>
-                    <div className="w-10 h-10 rounded-sm bg-[#002FA7]/10 overflow-hidden">
+                    {/* The photo is a clickable file picker — tap it to replace a wrong image. */}
+                    <label
+                      className="w-10 h-10 rounded-sm bg-[#002FA7]/10 overflow-hidden block relative cursor-pointer group/photo"
+                      title="Click to change photo"
+                      data-testid={`change-member-photo-${m.id}`}
+                    >
                       {m.photo_path ? (
                         <img src={fileUrl(m.photo_path)} alt={m.name} className="w-full h-full object-cover" />
                       ) : (
@@ -103,7 +127,17 @@ export default function ClientTeam() {
                           {m.name?.charAt(0)?.toUpperCase()}
                         </div>
                       )}
-                    </div>
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-white opacity-0 group-hover/photo:opacity-100 transition-opacity">
+                        {changingId === m.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Pencil className="w-3.5 h-3.5" strokeWidth={1.5} />}
+                      </span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={changingId === m.id}
+                        onChange={(e) => handleChangePhoto(m.id, e.target.files?.[0], e)}
+                      />
+                    </label>
                   </TableCell>
                   <TableCell className="text-sm font-medium text-[#09090B]">{m.name}</TableCell>
                   <TableCell className="text-sm text-zinc-600">{m.role_title || '-'}</TableCell>

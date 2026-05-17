@@ -22,6 +22,7 @@ export default function AgentClientDetail() {
   const [staffForm, setStaffForm] = useState({ name: '', role_title: '' });
   const [staffFile, setStaffFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [changingId, setChangingId] = useState(null);
   const fileRef = useRef();
 
   const fetchData = async () => {
@@ -66,6 +67,24 @@ export default function AgentClientDetail() {
       fetchData();
     } catch (err) { toast.error(err.response?.data?.detail || 'Upload failed'); }
     finally { setUploading(false); }
+  };
+
+  // Replace an existing staff member's photo (e.g. a wrong image was uploaded).
+  const handleChangePhoto = async (memberId, photoFile, e) => {
+    if (!photoFile) return;
+    setChangingId(memberId);
+    try {
+      const formData = new FormData();
+      formData.append('file', photoFile);
+      await api.upload(`/agent/clients/${clientId}/team/${memberId}/photo`, formData);
+      toast.success('Photo updated');
+      fetchData();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Failed to update photo');
+    } finally {
+      setChangingId(null);
+      if (e?.target) e.target.value = '';
+    }
   };
 
   const handleDeleteMember = async (memberId, memberName) => {
@@ -162,9 +181,24 @@ export default function AgentClientDetail() {
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {members.map(m => (
                 <div key={m.id} className="relative group p-3 bg-zinc-50 border border-zinc-100 rounded-sm" data-testid={`staff-card-${m.id}`}>
-                  <div className="w-16 h-16 rounded-sm bg-[#002FA7]/10 overflow-hidden mx-auto mb-2">
+                  {/* The photo is a clickable file picker — tap it to replace a wrong image. */}
+                  <label
+                    className="w-16 h-16 rounded-sm bg-[#002FA7]/10 overflow-hidden mx-auto mb-2 block relative cursor-pointer group/photo"
+                    title="Click to change photo"
+                    data-testid={`change-staff-photo-${m.id}`}
+                  >
                     {m.photo_path ? <img src={fileUrl(m.photo_path)} alt={m.name} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-xl font-medium text-[#002FA7]">{m.name?.charAt(0)?.toUpperCase()}</div>}
-                  </div>
+                    <span className="absolute inset-0 flex items-center justify-center bg-black/50 text-white text-[10px] font-medium opacity-0 group-hover/photo:opacity-100 transition-opacity">
+                      {changingId === m.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Pencil className="w-3 h-3 mr-1" strokeWidth={1.5} /> Change</>}
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={changingId === m.id}
+                      onChange={(e) => handleChangePhoto(m.id, e.target.files?.[0], e)}
+                    />
+                  </label>
                   <p className="text-sm font-medium text-[#09090B] text-center">{m.name}</p>
                   <p className="text-xs text-zinc-400 text-center">{m.role_title}</p>
                   <button
