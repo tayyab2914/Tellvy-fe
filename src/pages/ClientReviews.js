@@ -4,19 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Star, MessageSquare, Loader2, Copy, RefreshCw } from 'lucide-react';
+import { Star, MessageSquare, Loader2, Copy, RefreshCw, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function ClientReviews() {
   const [reviews, setReviews] = useState([]);
+  const [privateFeedback, setPrivateFeedback] = useState([]);
   const [responding, setResponding] = useState(null);
   const [responseDraft, setResponseDraft] = useState('');
   const [generating, setGenerating] = useState(false);
   const [importing, setImporting] = useState(false);
 
   const fetchReviews = () => api.get('/client/reviews').then(r => setReviews(r.data)).catch(() => {});
+  const fetchPrivateFeedback = () => api.get('/client/private-feedback').then(r => setPrivateFeedback(r.data)).catch(() => {});
 
-  useEffect(() => { fetchReviews(); }, []);
+  useEffect(() => { fetchReviews(); fetchPrivateFeedback(); }, []);
 
   const handleImportReviews = async () => {
     setImporting(true);
@@ -69,6 +71,35 @@ export default function ClientReviews() {
             : <><RefreshCw className="w-3.5 h-3.5 mr-1.5" strokeWidth={1.5} /> Refresh Reviews</>}
         </Button>
       </div>
+
+      {privateFeedback.length > 0 && (
+        <div className="space-y-3" data-testid="private-feedback-list">
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-zinc-500" strokeWidth={1.5} />
+            <h2 className="font-heading text-lg font-medium text-[#09090B]">Private Feedback</h2>
+            <Badge className="rounded-sm bg-zinc-100 text-zinc-600 text-xs hover:bg-zinc-100">{privateFeedback.length}</Badge>
+          </div>
+          <p className="text-sm text-zinc-500">Sent directly to you instead of posted publicly — not visible to anyone else.</p>
+          {privateFeedback.map(fb => (
+            <Card key={fb.id} className="rounded-sm border-zinc-200 shadow-none bg-amber-50/40" data-testid={`private-feedback-card-${fb.id}`}>
+              <CardContent className="p-5">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex">
+                      {Array.from({ length: 5 }).map((_, i) => (
+                        <Star key={i} className={`w-3.5 h-3.5 ${i < fb.rating ? 'text-amber-400 fill-amber-400' : 'text-zinc-200'}`} />
+                      ))}
+                    </div>
+                    {fb.member_name && <span className="text-xs text-zinc-500">about {fb.member_name}</span>}
+                  </div>
+                  <span className="text-xs text-zinc-400">{new Date(fb.timestamp).toLocaleDateString()}</span>
+                </div>
+                <p className="text-sm text-zinc-700 leading-relaxed">{fb.message}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
       <div className="space-y-4">
         {reviews.length === 0 ? (
