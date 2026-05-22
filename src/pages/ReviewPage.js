@@ -253,21 +253,34 @@ export default function ReviewPage() {
               <p className="text-xs uppercase tracking-[0.2em] font-bold text-zinc-400 mb-3">
                 {isLowRating ? 'Which areas need improvement?' : 'How was your experience?'}
               </p>
-              <div className="flex flex-wrap gap-2">
-                {displayTags.map(tag => (
-                  <button
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    className={`px-4 py-2 text-sm rounded-sm border transition-all duration-150 ${
-                      selectedTags.includes(tag)
-                        ? 'bg-[#002FA7] text-white border-[#002FA7]'
-                        : 'bg-white text-zinc-600 border-zinc-200 hover:border-[#002FA7]/50'
-                    }`}
-                    data-testid={`tag-${tag.toLowerCase()}`}
-                  >
-                    {tag}
-                  </button>
-                ))}
+              <div className="flex flex-col gap-2" role="radiogroup">
+                {displayTags.map(tag => {
+                  const isSelected = selectedTags.includes(tag);
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      onClick={() => toggleTag(tag)}
+                      className={`flex items-center gap-3 w-full px-4 py-3 text-sm rounded-sm border text-left transition-all duration-150 ${
+                        isSelected
+                          ? 'bg-[#002FA7]/5 text-[#09090B] border-[#002FA7]'
+                          : 'bg-white text-zinc-600 border-zinc-200 hover:border-[#002FA7]/50'
+                      }`}
+                      data-testid={`tag-${tag.toLowerCase()}`}
+                    >
+                      <span
+                        className={`flex items-center justify-center w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                          isSelected ? 'border-[#002FA7]' : 'border-zinc-300'
+                        }`}
+                      >
+                        {isSelected && <span className="w-2 h-2 rounded-full bg-[#002FA7]" />}
+                      </span>
+                      {tag}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 
